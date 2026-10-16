@@ -1,0 +1,68 @@
+name: Tables checks
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: composer:v2
+          coverage: none
+      - run: composer validate --no-check-publish
+      - run: find src tests -name '*.php' -type f -print0 | xargs -0 -n1 php -l
+  dependency-gate:
+    runs-on: ubuntu-latest
+    outputs:
+      available: ${{ steps.check.outputs.available }}
+    steps:
+      - name: Check private Support access
+        id: check
+        env:
+          READ_TOKEN: ${{ secrets.LAVERTIA_READ_TOKEN }}
+        run: |
+          if [ -n "$READ_TOKEN" ] || curl -fsS --max-time 10 -o /dev/null https://api.github.com/repos/lavertia/support; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::PHPUnit/Testbench skipped: private support requires LAVERTIA_READ_TOKEN."
+            echo "## PHPUnit/Testbench: BLOCKED without private dependency access" >> "$GITHUB_STEP_SUMMARY"
+          fi
+  php:
+    needs: [static, dependency-gate]
+    if: needs.dependency-gate.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["8.3", "8.4"]
+    defaults:
+      run:
+        working-directory: tables
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: tables
+      - uses: actions/checkout@v4
+        with:
+          repository: lavertia/support
+          ref: main
+          token: ${{ secrets.LAVERTIA_READ_TOKEN || github.token }}
+          path: support
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, pdo_sqlite, sqlite3
+          tools: composer:v2
+          coverage: none
+      - run: |
+          composer config repositories.lavertia-support '{"type":"path","url":"../support","options":{"symlink":true,"versions":{"lavertia/support":"0.1.0"}}}'
+          composer install --no-interaction --prefer-dist --no-progress
+          composer test
+          composer lint
