@@ -1,0 +1,65 @@
+name: Tables checks
+on:
+  push:
+    branches: [main, "feat/**"]
+    tags: ["v0.*"]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: composer:v2
+          coverage: none
+      - run: composer validate --no-check-publish
+      - run: find src tests -name '*.php' -type f -print0 | xargs -0 -n1 php -l
+  php:
+    needs: static
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["8.3", "8.4"]
+    defaults:
+      run:
+        working-directory: tables
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: tables
+      - uses: actions/checkout@v4
+        with:
+          repository: lavertia/support
+          ref: main
+          path: support
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, pdo_sqlite, sqlite3
+          tools: composer:v2
+          coverage: none
+      - run: |
+          composer config repositories.lavertia-support '{"type":"path","url":"../support","options":{"symlink":true,"versions":{"lavertia/support":"0.1.0"}}}'
+          composer install --no-interaction --prefer-dist --no-progress
+          composer test
+          composer lint
+
+  release-gate:
+    name: PHP integration verification
+    needs: [static, php]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require executed PHP test matrix before tagging
+        run: |
+          if [ "${{ needs.static.result }}" != "success" ] \
+            || [ "${{ needs.php.result }}" != "success" ]; then
+            echo "::error::Release blocked. Required PHP tests may not be skipped."
+            exit 1
+          fi
+          echo "Static and PHP matrix checks passed for public dependency checkout."
