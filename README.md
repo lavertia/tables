@@ -1,6 +1,6 @@
 # Lavertia Tables
 
-**Experimental v0.2 package – private, not published as a stable Composer release.**
+**Experimental v0.2 package – public source, not published as a stable Composer release.**
 
 Canonical home of `Table`, `TextColumn` and `SelectFilter` PHP components. Accepts bounded scalar snapshots (100 rows max) or Laravel Eloquent queries with explicit authorization and a page size limited to 1–100. Always scope your Builder to the current user, tenant or team **before** invoking `eloquent()`.
 
@@ -27,6 +27,10 @@ Includes **server-side** pagination, allowlisted sort/search/filter parameters, 
 
 React/Vue/Svelte frontend controls currently live in [Panels PR #6](https://github.com/lavertia/panels/pull/6). An eventual compatibility alias from `Lavertia\Panels\Components\*` to this package must be verified before changing existing consumers.
 
-Run `composer test` and `composer lint` after configuring a `lavertia/support` path repository. GitHub Actions PHP tests require a read-only `LAVERTIA_READ_TOKEN` while Support is private.
+Run `composer test` and `composer lint` after configuring a `lavertia/support` path repository. GitHub Actions run PHP tests directly against the public Support package; no private-read token is needed.
 
 [Release readiness checklist](https://github.com/lavertia/lavertia/issues/3)
+
+## Security and license
+
+Lavertia-owned source is MIT licensed. See [LICENSE.md](LICENSE.md) and [SECURITY.md](SECURITY.md). Never report credentials in a public issue.
