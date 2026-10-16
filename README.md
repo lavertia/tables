@@ -1,9 +1,11 @@
 # Lavertia Tables
 
-Experimental private package for eloquent-backed tables and filter/column descriptors.
+**Experimental v0.2 package, no stable release.**
 
-**Status:** Work in progress for Lavertia v0.2. No stable release or Packagist package is available.
+Lavertia Tables defines PHP-first table descriptors, filters, allowlisted sorting and scoped Eloquent pagination. The standalone PHP implementation is under review in [PR #2](https://github.com/lavertia/tables/pull/2). The `main` branch is a repository scaffold until that PR is verified and merged.
 
-The Laravel / Inertia implementation and compatibility layer will be tested in feature branches before this package becomes the canonical source.
+The consuming Laravel application must authorize records and scope builders to the current user or tenant **before** sending data to the table renderer. UI controls are not authorization controls.
 
-See [Lavertia release readiness](https://github.com/lavertia/lavertia/issues/3).
+See the [Lavertia documentation](https://lavertia.github.io/lavertia-doc/), [release-readiness issue](https://github.com/lavertia/lavertia/issues/3), and [security policy](SECURITY.md).
+
+**License:** MIT; see [LICENSE.md](LICENSE.md). A public source repository is not a production-ready Composer release.
