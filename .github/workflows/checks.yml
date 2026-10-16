@@ -2,6 +2,7 @@ name: Tables checks
 on:
   push:
     branches: [main, "feat/**"]
+    tags: ["v0.*"]
   pull_request:
 permissions:
   contents: read
@@ -66,3 +67,19 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
           composer test
           composer lint
+
+  release-gate:
+    name: v0 release verification
+    needs: [static, dependency-gate, php]
+    if: always() && startsWith(github.ref, 'refs/tags/v0.')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require executed PHP test matrix before tagging
+        run: |
+          if [ "${{ needs.static.result }}" != "success" ] \
+            || [ "${{ needs.dependency-gate.outputs.available }}" != "true" ] \
+            || [ "${{ needs.php.result }}" != "success" ]; then
+            echo "::error::Release blocked. Required PHP tests may not be skipped."
+            exit 1
+          fi
+          echo "Static and PHP matrix checks passed."
