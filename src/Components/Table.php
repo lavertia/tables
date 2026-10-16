@@ -203,7 +203,7 @@ final class Table extends AbstractComponent implements TableComponent
             'name' => $this->name,
             'rows' => [],
             'mode' => 'snapshot',
-            'locale' => app() instanceof \Illuminate\Foundation\Application ? app()->getLocale() : 'en',
+            'locale' => function_exists('app') && app() instanceof \Illuminate\Foundation\Application ? app()->getLocale() : 'en',
             ...parent::getProps(),
         ];
 
