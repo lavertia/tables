@@ -8,6 +8,7 @@ use Closure;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Application;
 use InvalidArgumentException;
 use Lavertia\Support\Components\AbstractComponent;
 use Lavertia\Support\Contracts\Component;
@@ -28,9 +29,7 @@ final class Table extends AbstractComponent implements TableComponent
 
     private int $perPage = 15;
 
-    private function __construct(private readonly string $name)
-    {
-    }
+    private function __construct(private readonly string $name) {}
 
     public static function make(string $name): self
     {
@@ -155,7 +154,7 @@ final class Table extends AbstractComponent implements TableComponent
     /**
      * Snapshot mode is for small, non-sensitive datasets and has a strict upper bound.
      *
-     * @param list<array<string, scalar|null>> $rows
+     * @param  list<array<string, scalar|null>>  $rows
      */
     public function rows(array $rows): static
     {
@@ -179,7 +178,7 @@ final class Table extends AbstractComponent implements TableComponent
     }
 
     /**
-     * @param array<int, array<string, mixed>> $orders
+     * @param  array<int, array<string, mixed>>  $orders
      */
     private function hasPrimaryKeyOrder(array $orders, string $qualifiedKey, string $key): bool
     {
@@ -203,7 +202,7 @@ final class Table extends AbstractComponent implements TableComponent
             'name' => $this->name,
             'rows' => [],
             'mode' => 'snapshot',
-            'locale' => function_exists('app') && app() instanceof \Illuminate\Foundation\Application ? app()->getLocale() : 'en',
+            'locale' => function_exists('app') && app() instanceof Application ? app()->getLocale() : 'en',
             ...parent::getProps(),
         ];
 

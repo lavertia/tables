@@ -10,9 +10,7 @@ use Lavertia\Support\Contracts\TableColumnComponent;
 
 final class TextColumn extends AbstractComponent implements TableColumnComponent
 {
-    private function __construct(private readonly string $name)
-    {
-    }
+    private function __construct(private readonly string $name) {}
 
     public static function make(string $name): self
     {

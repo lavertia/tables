@@ -9,9 +9,7 @@ use Lavertia\Support\Components\AbstractComponent;
 
 final class SelectFilter extends AbstractComponent
 {
-    private function __construct(private readonly string $name)
-    {
-    }
+    private function __construct(private readonly string $name) {}
 
     public static function make(string $name): self
     {
@@ -38,7 +36,7 @@ final class SelectFilter extends AbstractComponent
     }
 
     /**
-     * @param array<int|string, string> $options
+     * @param  array<int|string, string>  $options
      */
     public function options(array $options): static
     {
