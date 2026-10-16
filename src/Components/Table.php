@@ -148,7 +148,14 @@ final class Table extends AbstractComponent implements TableComponent
     /** @return list<Component> */
     public function getComponents(): array
     {
-        return [...$this->columns, ...$this->filters];
+        // Native column names cannot contain hyphens, so filter keys stay
+        // distinct without changing the existing column identity.
+        $filters = array_map(
+            static fn (SelectFilter $filter): SelectFilter => $filter->key('filter-'.$filter->getFilterName()),
+            $this->filters,
+        );
+
+        return [...$this->columns, ...$filters];
     }
 
     /**
