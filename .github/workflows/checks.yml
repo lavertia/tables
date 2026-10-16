@@ -18,26 +18,8 @@ jobs:
           coverage: none
       - run: composer validate --no-check-publish
       - run: find src tests -name '*.php' -type f -print0 | xargs -0 -n1 php -l
-  dependency-gate:
-    runs-on: ubuntu-latest
-    outputs:
-      available: ${{ steps.check.outputs.available }}
-    steps:
-      - name: Check private Support access
-        id: check
-        env:
-          READ_TOKEN: ${{ secrets.LAVERTIA_READ_TOKEN }}
-        run: |
-          if [ -n "$READ_TOKEN" ] || curl -fsS --max-time 10 -o /dev/null https://api.github.com/repos/lavertia/support; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::PHPUnit/Testbench skipped: private support requires LAVERTIA_READ_TOKEN."
-            echo "## PHPUnit/Testbench: BLOCKED without private dependency access" >> "$GITHUB_STEP_SUMMARY"
-          fi
   php:
-    needs: [static, dependency-gate]
-    if: needs.dependency-gate.outputs.available == 'true'
+    needs: static
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -54,7 +36,6 @@ jobs:
         with:
           repository: lavertia/support
           ref: main
-          token: ${{ secrets.LAVERTIA_READ_TOKEN || github.token }}
           path: support
       - uses: shivammathur/setup-php@v2
         with:
@@ -69,17 +50,16 @@ jobs:
           composer lint
 
   release-gate:
-    name: v0 release verification
-    needs: [static, dependency-gate, php]
-    if: always() && startsWith(github.ref, 'refs/tags/v0.')
+    name: PHP integration verification
+    needs: [static, php]
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Require executed PHP test matrix before tagging
         run: |
           if [ "${{ needs.static.result }}" != "success" ] \
-            || [ "${{ needs.dependency-gate.outputs.available }}" != "true" ] \
             || [ "${{ needs.php.result }}" != "success" ]; then
             echo "::error::Release blocked. Required PHP tests may not be skipped."
             exit 1
           fi
-          echo "Static and PHP matrix checks passed."
+          echo "Static and PHP matrix checks passed for public dependency checkout."
