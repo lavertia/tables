@@ -81,6 +81,24 @@ final class AdvancedTableTest extends TestCase
         self::assertSame(2, $props['pagination']['total']);
     }
 
+    public function test_columns_and_filters_with_matching_attribute_names_have_distinct_component_keys(): void
+    {
+        $table = Table::make('members')
+            ->columns([TextColumn::make('status')->badge()])
+            ->filters([SelectFilter::make('status')->options(['active' => 'Active'])])
+            ->rows([['status' => 'active']]);
+
+        $tree = $table->toArray();
+        $children = $tree['components'];
+
+        self::assertSame(['root/status', 'root/filter-status'], array_column($children, 'key'));
+        self::assertSame(['text-column', 'select-filter'], array_column($children, 'type'));
+        self::assertSame('status', $children[1]['props']->name);
+
+        // Serialization does not mutate the caller's immutable filter component.
+        self::assertSame('status', $table->getComponents()[0]->getKey());
+    }
+
     public function test_server_pagination_uses_a_stable_primary_key_order_by_default(): void
     {
         $this->app->instance('request', Request::create('/admin/model-demo?lvt_records_page=2'));
