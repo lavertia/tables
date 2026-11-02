@@ -27,6 +27,8 @@ final class Table extends AbstractComponent implements TableComponent
 
     private ?Closure $authorize = null;
 
+    private ?Closure $recordUrl = null;
+
     private int $perPage = 15;
 
     /** @var list<int> */
@@ -307,6 +309,20 @@ final class Table extends AbstractComponent implements TableComponent
 
         $copy = clone $this;
         $copy->columns = $columns;
+
+        return $copy;
+    }
+
+    /**
+     * Record URLs are evaluated server-side only after authorization and tenant
+     * filtering. Limit destinations to same-origin relative URLs.
+     *
+     * @param Closure(Model): string $resolver
+     */
+    public function recordUrl(Closure $resolver): static
+    {
+        $copy = clone $this;
+        $copy->recordUrl = $resolver;
 
         return $copy;
     }
@@ -640,6 +656,18 @@ final class Table extends AbstractComponent implements TableComponent
                 }
 
                 $result[$name] = $value;
+            }
+
+            if ($this->recordUrl !== null) {
+                $url = ($this->recordUrl)($model);
+
+                if (! is_string($url) || ! str_starts_with($url, '/')
+                    || str_starts_with($url, '//') || str_contains($url, '\\')
+                    || preg_match('/[\x00-\x1F\x7F]/', $url) === 1) {
+                    throw new InvalidArgumentException('Record URL must be a safe same-origin path.');
+                }
+
+                $result['__recordUrl'] = $url;
             }
 
             return $result;
