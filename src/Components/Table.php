@@ -37,7 +37,6 @@ final class Table extends AbstractComponent implements TableComponent
     /** @var list<string> */
     private array $summaryColumns = [];
 
-
     private function __construct(private readonly string $name) {}
 
     public static function make(string $name): self
@@ -103,7 +102,7 @@ final class Table extends AbstractComponent implements TableComponent
      */
     public function tabs(string $attribute, array $options): static
     {
-        if (! preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/D', $attribute)) {
+        if (preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/D', $attribute) !== 1) {
             throw new InvalidArgumentException('Invalid tab attribute.');
         }
 
@@ -129,7 +128,7 @@ final class Table extends AbstractComponent implements TableComponent
 
         foreach ($attributes as $attribute) {
             if (! is_string($attribute)
-                || ! preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/D', $attribute)) {
+                || preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/D', $attribute) !== 1) {
                 throw new InvalidArgumentException('Invalid summary attribute.');
             }
         }
@@ -148,7 +147,7 @@ final class Table extends AbstractComponent implements TableComponent
         }
 
         foreach ($options as $value => $label) {
-            if (! is_string($value) || ! preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/D', $value)
+            if (! is_string($value) || preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/D', $value) !== 1)
                 || ! is_string($label) || mb_strlen($label) > 80) {
                 throw new InvalidArgumentException('Invalid table option.');
             }
