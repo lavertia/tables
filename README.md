@@ -2,16 +2,17 @@
 
 **Experimental v0.2 package – public source, not published as a stable Composer release.**
 
-Canonical home of `Table`, `TextColumn` and `SelectFilter` PHP components. Accepts bounded scalar snapshots (100 rows max) or Laravel Eloquent queries with explicit authorization and a page size limited to 1–100. Always scope your Builder to the current user, tenant or team **before** invoking `eloquent()`.
+Canonical home of `Table`, `TextColumn`, `IconColumn` and `SelectFilter` PHP components. Accepts bounded scalar snapshots (100 rows max) or Laravel Eloquent queries with explicit authorization and a page size limited to 1–100. Always scope your Builder to the current user, tenant or team **before** invoking `eloquent()`.
 
 ```php
-use Lavertia\Tables\Components\{Table, TextColumn, SelectFilter};
+use Lavertia\Tables\Components\{Table, TextColumn, IconColumn, SelectFilter};
 
 $table = Table::make('members')
     ->searchable()
     ->columns([
         TextColumn::make('name')->sortable()->searchable(),
         TextColumn::make('status')->badge(),
+        IconColumn::make('is_featured')->boolean()->label('Featured'),
     ])
     ->filters([
         SelectFilter::make('status')->options(['active' => 'Active']),
