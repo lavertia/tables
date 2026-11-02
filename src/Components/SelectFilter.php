@@ -54,6 +54,14 @@ final class SelectFilter extends AbstractComponent
         return $this->withProp('options', $options);
     }
 
+    /**
+     * Interpret 'yes' / 'no' options as NULL presence without exposing SQL.
+     */
+    public function presence(bool $enabled = true): static
+    {
+        return $this->withProp('presence', $enabled);
+    }
+
     /** @return array<string, mixed> */
     public function getProps(): array
     {
