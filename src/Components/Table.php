@@ -46,7 +46,6 @@ final class Table extends AbstractComponent implements TableComponent
 
     private string $paginationMode = 'length-aware';
 
-
     /** @var array<string, string> */
     private array $tabs = [];
 
@@ -201,7 +200,6 @@ final class Table extends AbstractComponent implements TableComponent
         return $this->withProp('pollIntervalMs', $seconds * 1000);
     }
 
-
     public function searchable(bool $enabled = true): static
     {
         return $this->withProp('searchable', $enabled);
@@ -320,7 +318,7 @@ final class Table extends AbstractComponent implements TableComponent
      * Record URLs are evaluated server-side only after authorization and tenant
      * filtering. Limit destinations to same-origin relative URLs.
      *
-     * @param Closure(Model): string $resolver
+     * @param  Closure(Model): string  $resolver
      */
     public function recordUrl(Closure $resolver): static
     {
@@ -600,7 +598,6 @@ final class Table extends AbstractComponent implements TableComponent
         if ($this->persistPerPage && request()->hasSession()) {
             request()->session()->put($sessionKey, $perPage);
         }
-
 
         $pageParam = $prefix.'page';
         $page = filter_var(request()->query($pageParam, 1), FILTER_VALIDATE_INT, [
