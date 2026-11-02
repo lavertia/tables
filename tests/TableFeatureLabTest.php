@@ -142,6 +142,23 @@ final class TableFeatureLabTest extends TestCase
         self::assertSame('success', $props['recordTones']['tones']['Article 1']);
     }
 
+    public function test_feature_presentation_flags_only_change_serialized_ui_contract(): void
+    {
+        $this->app->instance('request', Request::create('/admin/lab'));
+
+        $props = $this->table()
+            ->selectable(false)
+            ->recordActions(false)
+            ->paginationControls(false)
+            ->getProps();
+
+        self::assertFalse($props['selectable']);
+        self::assertFalse($props['recordActions']);
+        self::assertFalse($props['paginationControls']);
+        self::assertSame(3, $props['pagination']['total']);
+        self::assertCount(3, $props['rows']);
+    }
+
     public function test_unsupported_pagination_modes_are_rejected(): void
     {
         $this->expectException(InvalidArgumentException::class);
