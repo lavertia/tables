@@ -86,7 +86,7 @@ final class Table extends AbstractComponent implements TableComponent
     /**
      * Group headers are applied to the displayed page (not the entire result set).
      *
-     * @param array<string, string> $options column => label
+     * @param  array<string, string>  $options  column => label
      */
     public function groupable(array $options): static
     {
@@ -98,7 +98,7 @@ final class Table extends AbstractComponent implements TableComponent
     /**
      * Predefined server-filtered tabs; user input can select values, not SQL fields.
      *
-     * @param array<string, string> $options status => label
+     * @param  array<string, string>  $options  status => label
      */
     public function tabs(string $attribute, array $options): static
     {
@@ -118,7 +118,7 @@ final class Table extends AbstractComponent implements TableComponent
     /**
      * Sum fields on the tenant-scoped filtered query, before pagination.
      *
-     * @param list<string> $attributes
+     * @param  list<string>  $attributes
      */
     public function summarize(array $attributes): static
     {
