@@ -34,6 +34,8 @@ final class Table extends AbstractComponent implements TableComponent
     /** @var list<int> */
     private array $pageOptions = [5, 10, 25, 50, 100];
 
+    private bool $customPageOptions = false;
+
     private ?int $defaultPageOption = null;
 
     private bool $paginationEnabled = true;
@@ -134,6 +136,7 @@ final class Table extends AbstractComponent implements TableComponent
 
         $copy = clone $this;
         $copy->pageOptions = $options;
+        $copy->customPageOptions = true;
 
         return $copy;
     }
@@ -436,13 +439,17 @@ final class Table extends AbstractComponent implements TableComponent
     /** @return array<string, mixed> */
     public function getProps(): array
     {
+        $pageOptions = $this->customPageOptions
+            ? $this->pageOptions
+            : array_values(array_unique([...$this->pageOptions, $this->perPage]));
+
         $base = [
             'name' => $this->name,
             'rows' => [],
             'mode' => 'snapshot',
             'tabs' => $this->tabs,
             'summaryColumns' => $this->summaryColumns,
-            'paginationOptions' => $this->pageOptions,
+            'paginationOptions' => $pageOptions,
             'paginationEnabled' => $this->paginationEnabled,
             'paginationMode' => $this->paginationMode,
             'extremePaginationLinks' => $this->extremePageLinks,
@@ -573,7 +580,7 @@ final class Table extends AbstractComponent implements TableComponent
 
         $defaultSize = $this->defaultPageOption ?? $this->perPage;
 
-        if (! in_array($defaultSize, $this->pageOptions, true)) {
+        if (! in_array($defaultSize, $pageOptions, true)) {
             throw new InvalidArgumentException('Default page size must be one of the enforced pagination options.');
         }
 
@@ -586,7 +593,7 @@ final class Table extends AbstractComponent implements TableComponent
             $candidate = request()->session()->get($sessionKey);
         }
 
-        $perPage = is_int($candidate) && in_array($candidate, $this->pageOptions, true)
+        $perPage = is_int($candidate) && in_array($candidate, $pageOptions, true)
             ? $candidate : $defaultSize;
 
         if ($this->persistPerPage && request()->hasSession()) {
