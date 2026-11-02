@@ -51,7 +51,7 @@ jobs:
       - name: Show formatter diff on lint failure
         if: failure() && matrix.php == '8.4'
         run: |
-          php vendor/bin/pint --dirty || true
+          php vendor/bin/pint src/Components/Table.php || true
           git --no-pager diff -- src/Components/Table.php
 
   release-gate:
