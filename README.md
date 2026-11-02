@@ -12,7 +12,6 @@ $table = Table::make('members')
     ->columns([
         TextColumn::make('name')->sortable()->searchable(),
         TextColumn::make('status')->badge(),
-        IconColumn::make('is_featured')->boolean()->label('Featured'),
     ])
     ->filters([
         SelectFilter::make('status')->options(['active' => 'Active']),
@@ -22,6 +21,21 @@ $table = Table::make('members')
         fn (): bool => auth()->user()?->can('viewAny', User::class) === true,
         25,
     );
+```
+
+For a boolean attribute that is actually present in your model or snapshot,
+declare an icon column as part of the same Table API:
+
+```php
+$posts = Table::make('posts')
+    ->columns([
+        TextColumn::make('title')->searchable()->sortable(),
+        TextColumn::make('slug'),
+        IconColumn::make('is_featured')->boolean()->label('Featured'),
+    ])
+    ->rows([
+        ['title' => 'Example post', 'slug' => 'example-post', 'is_featured' => true],
+    ]);
 ```
 
 Includes **server-side** pagination, allowlisted sort/search/filter parameters, a deterministic unique primary-key tie-breaker and JSON-safe projections. Client-side hiding is only presentation; it is **not** row- or column-level authorization.
