@@ -368,18 +368,19 @@ final class Table extends AbstractComponent implements TableComponent
 
         foreach ($this->filters as $filter) {
             $name = $filter->getFilterName();
+            $attribute = $filter->getProps()['source'] ?? $name;
             $options = $filter->getProps()['options'] ?? [];
             $value = request()->query($prefix.'filter_'.$name);
 
             if (is_string($value) && array_key_exists($value, $options)) {
                 if (($filter->getProps()['presence'] ?? false) === true) {
                     if ($value === 'yes') {
-                        $query->whereNotNull($name);
+                        $query->whereNotNull($attribute);
                     } elseif ($value === 'no') {
-                        $query->whereNull($name);
+                        $query->whereNull($attribute);
                     }
                 } else {
-                    $query->where($name, '=', $value);
+                    $query->where($attribute, '=', $value);
                 }
                 $appliedFilters[$name] = $value;
             }
