@@ -108,8 +108,8 @@ final class TableFeatureLabTest extends TestCase
 
     public function test_record_urls_are_resolved_only_from_the_authorized_scope(): void
     {
-        $props = $this->table()->recordUrl(static fn (Model $model): string =>
-            '/admin/tables-feature-lab?feature=15&record='.$model->getKey()
+        $props = $this->table()->recordUrl(
+            static fn (Model $model): string => '/admin/tables-feature-lab?feature=15&record='.$model->getKey(),
         )->getProps();
 
         self::assertSame(3, $props['pagination']['total']);
