@@ -29,6 +29,15 @@ final class Table extends AbstractComponent implements TableComponent
 
     private int $perPage = 15;
 
+    /** @var array<string, string> */
+    private array $tabs = [];
+
+    private ?string $tabField = null;
+
+    /** @var list<string> */
+    private array $summaryColumns = [];
+
+
     private function __construct(private readonly string $name) {}
 
     public static function make(string $name): self
@@ -73,6 +82,77 @@ final class Table extends AbstractComponent implements TableComponent
     public function columnManager(bool $enabled = true): static
     {
         return $this->withProp('columnManager', $enabled);
+    }
+
+    /**
+     * Group headers are applied to the displayed page (not the entire result set).
+     *
+     * @param array<string, string> $options column => label
+     */
+    public function groupable(array $options): static
+    {
+        $this->validateOptions($options, 15);
+
+        return $this->withProp('groupOptions', $options);
+    }
+
+    /**
+     * Predefined server-filtered tabs; user input can select values, not SQL fields.
+     *
+     * @param array<string, string> $options status => label
+     */
+    public function tabs(string $attribute, array $options): static
+    {
+        if (! preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/D', $attribute)) {
+            throw new InvalidArgumentException('Invalid tab attribute.');
+        }
+
+        $this->validateOptions($options, 20);
+
+        $copy = clone $this;
+        $copy->tabField = $attribute;
+        $copy->tabs = $options;
+
+        return $copy;
+    }
+
+    /**
+     * Sum fields on the tenant-scoped filtered query, before pagination.
+     *
+     * @param list<string> $attributes
+     */
+    public function summarize(array $attributes): static
+    {
+        if (! array_is_list($attributes) || count($attributes) > 8) {
+            throw new InvalidArgumentException('Invalid summary columns.');
+        }
+
+        foreach ($attributes as $attribute) {
+            if (! is_string($attribute)
+                || ! preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/D', $attribute)) {
+                throw new InvalidArgumentException('Invalid summary attribute.');
+            }
+        }
+
+        $copy = clone $this;
+        $copy->summaryColumns = array_values(array_unique($attributes));
+
+        return $copy;
+    }
+
+    /** @param array<string, string> $options */
+    private function validateOptions(array $options, int $limit): void
+    {
+        if (count($options) > $limit) {
+            throw new InvalidArgumentException('Too many table options.');
+        }
+
+        foreach ($options as $value => $label) {
+            if (! is_string($value) || ! preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/D', $value)
+                || ! is_string($label) || mb_strlen($label) > 80) {
+                throw new InvalidArgumentException('Invalid table option.');
+            }
+        }
     }
 
     /** @param list<TableColumnComponent> $columns */
@@ -209,6 +289,8 @@ final class Table extends AbstractComponent implements TableComponent
             'name' => $this->name,
             'rows' => [],
             'mode' => 'snapshot',
+            'tabs' => $this->tabs,
+            'summaryColumns' => $this->summaryColumns,
             'locale' => function_exists('app') && app() instanceof Application && app()->bound('config') ? app()->getLocale() : 'en',
             ...parent::getProps(),
         ];
@@ -240,6 +322,12 @@ final class Table extends AbstractComponent implements TableComponent
             }
         }
 
+        foreach ($this->summaryColumns as $attribute) {
+            if (! in_array($attribute, $columns, true)) {
+                throw new InvalidArgumentException('Summaries require a declared column.');
+            }
+        }
+
         // Only simple, predeclared model attributes may participate in SQL operations.
         foreach ([...$sortable, ...$searchable] as $name) {
             if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/D', $name) !== 1) {
@@ -259,6 +347,23 @@ final class Table extends AbstractComponent implements TableComponent
             });
         }
 
+        $tabCounts = [];
+
+        if ($this->tabField !== null && $this->tabs !== []) {
+            $tabCounts = (clone $this->query)
+                ->select($this->tabField)
+                ->selectRaw('COUNT(*) AS aggregate_count')
+                ->groupBy($this->tabField)
+                ->pluck('aggregate_count', $this->tabField)
+                ->all();
+
+            $tabValue = request()->query($prefix.'tab');
+
+            if (is_string($tabValue) && array_key_exists($tabValue, $this->tabs)) {
+                $query->where($this->tabField, '=', $tabValue);
+            }
+        }
+
         $appliedFilters = [];
 
         foreach ($this->filters as $filter) {
@@ -267,7 +372,15 @@ final class Table extends AbstractComponent implements TableComponent
             $value = request()->query($prefix.'filter_'.$name);
 
             if (is_string($value) && array_key_exists($value, $options)) {
-                $query->where($name, '=', $value);
+                if (($filter->getProps()['presence'] ?? false) === true) {
+                    if ($value === 'yes') {
+                        $query->whereNotNull($name);
+                    } elseif ($value === 'no') {
+                        $query->whereNull($name);
+                    }
+                } else {
+                    $query->where($name, '=', $value);
+                }
                 $appliedFilters[$name] = $value;
             }
         }
@@ -295,13 +408,24 @@ final class Table extends AbstractComponent implements TableComponent
             $query->orderBy($key);
         }
 
+        $totals = [];
+
+        foreach ($this->summaryColumns as $attribute) {
+            $totals[$attribute] = (float) (clone $query)->sum($attribute);
+        }
+
+        $selectedPerPage = request()->query($prefix.'perPage');
+        $perPage = is_string($selectedPerPage) && in_array($selectedPerPage, ['5', '10', '25', '50', '100'], true)
+            ? (int) $selectedPerPage
+            : $this->perPage;
+
         $pageParam = $prefix.'page';
         $page = filter_var(request()->query($pageParam, 1), FILTER_VALIDATE_INT, [
             'options' => ['min_range' => 1, 'max_range' => 1000000],
         ]);
         $page = $page === false ? 1 : $page;
 
-        $paginator = $query->paginate($this->perPage, ['*'], $pageParam, $page)->withQueryString();
+        $paginator = $query->paginate($perPage, ['*'], $pageParam, $page)->withQueryString();
 
         $rows = $paginator->getCollection()->map(function (Model $model) use ($columns): array {
             $result = [];
@@ -332,6 +456,10 @@ final class Table extends AbstractComponent implements TableComponent
             'appliedSort' => $sort,
             'appliedDirection' => $direction,
             'appliedFilters' => $appliedFilters,
+            'appliedTab' => is_string(request()->query($prefix.'tab')) && array_key_exists(request()->query($prefix.'tab'), $this->tabs) ? request()->query($prefix.'tab') : null,
+            'tabCounts' => $tabCounts,
+            'summaryTotals' => $totals,
+            'groupOptions' => array_intersect_key(parent::getProps()['groupOptions'] ?? [], array_fill_keys($columns, true)),
             'pagination' => [
                 'page' => $paginator->currentPage(),
                 'lastPage' => $paginator->lastPage(),
