@@ -29,6 +29,20 @@ final class Table extends AbstractComponent implements TableComponent
 
     private int $perPage = 15;
 
+    /** @var list<int> */
+    private array $pageOptions = [5, 10, 25, 50, 100];
+
+    private ?int $defaultPageOption = null;
+
+    private bool $paginationEnabled = true;
+
+    private bool $extremePageLinks = true;
+
+    private bool $persistPerPage = false;
+
+    private string $paginationMode = 'length-aware';
+
+
     /** @var array<string, string> */
     private array $tabs = [];
 
@@ -67,6 +81,121 @@ final class Table extends AbstractComponent implements TableComponent
     {
         return $this->withProp('description', $description);
     }
+
+    public function heading(string $heading): static
+    {
+        return $this->withProp('label', $heading);
+    }
+
+    public function striped(bool $enabled = true): static
+    {
+        return $this->withProp('striped', $enabled);
+    }
+
+    /**
+     * Use a semantic server-defined tone rather than passing arbitrary
+     * class strings from record data into the browser.
+     *
+     * @param  array<string, 'success'|'warning'|'danger'|'info'|'neutral'>  $tones
+     */
+    public function recordTones(string $column, array $tones): static
+    {
+        if (preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,63}$/D', $column) !== 1) {
+            throw new InvalidArgumentException('Invalid row tone attribute.');
+        }
+
+        foreach ($tones as $value => $tone) {
+            if (! is_string($value) || ! in_array($tone, ['success', 'warning', 'danger', 'info', 'neutral'], true)) {
+                throw new InvalidArgumentException('Invalid row tone.');
+            }
+        }
+
+        return $this->withProp('recordTones', ['field' => $column, 'tones' => $tones]);
+    }
+
+    /** @param  list<int>  $options */
+    public function paginationPageOptions(array $options): static
+    {
+        if (! array_is_list($options) || $options === [] || count($options) > 10) {
+            throw new InvalidArgumentException('Pagination options must be a short list.');
+        }
+
+        foreach ($options as $option) {
+            if (! is_int($option) || $option < 1 || $option > 100) {
+                throw new InvalidArgumentException('Pagination size must be within 1 to 100.');
+            }
+        }
+
+        if (count(array_unique($options)) !== count($options)) {
+            throw new InvalidArgumentException('Duplicate pagination option.');
+        }
+
+        $copy = clone $this;
+        $copy->pageOptions = $options;
+
+        return $copy;
+    }
+
+    public function defaultPaginationPageOption(int $size): static
+    {
+        if ($size < 1 || $size > 100) {
+            throw new InvalidArgumentException('Invalid default pagination size.');
+        }
+
+        $copy = clone $this;
+        $copy->defaultPageOption = $size;
+
+        return $copy;
+    }
+
+    public function extremePaginationLinks(bool $enabled = true): static
+    {
+        $copy = clone $this;
+        $copy->extremePageLinks = $enabled;
+
+        return $copy;
+    }
+
+    public function paginated(bool $enabled = true): static
+    {
+        $copy = clone $this;
+        $copy->paginationEnabled = $enabled;
+
+        return $copy;
+    }
+
+    /** Only offset or simple mode is supported; cursor mode requires a separate keyed contract. */
+    public function paginationMode(string $mode): static
+    {
+        if (! in_array($mode, ['length-aware', 'simple'], true)) {
+            throw new InvalidArgumentException('Unsupported pagination mode.');
+        }
+
+        $copy = clone $this;
+        $copy->paginationMode = $mode;
+
+        return $copy;
+    }
+
+    /** Explicitly opt in; the default is not to persist the page size. */
+    public function persistPerPageInSession(bool $enabled = true): static
+    {
+        $copy = clone $this;
+        $copy->persistPerPage = $enabled;
+
+        return $copy;
+    }
+
+    /** Accept only bounded polling intervals and only poll Eloquent views on the client. */
+    public function poll(int $seconds): static
+    {
+        if ($seconds < 5 || $seconds > 300) {
+            throw new InvalidArgumentException('Polling must be between 5 and 300 seconds.');
+        }
+
+        return $this->withProp('pollIntervalMs', $seconds * 1000);
+    }
+
 
     public function searchable(bool $enabled = true): static
     {
@@ -182,6 +311,12 @@ final class Table extends AbstractComponent implements TableComponent
         return $copy;
     }
 
+    /** @param  list<TableColumnComponent>  $columns */
+    public function pushColumns(array $columns): static
+    {
+        return $this->columns([...$this->columns, ...$columns]);
+    }
+
     /** @param list<SelectFilter> $filters */
     public function filters(array $filters): static
     {
@@ -291,6 +426,11 @@ final class Table extends AbstractComponent implements TableComponent
             'mode' => 'snapshot',
             'tabs' => $this->tabs,
             'summaryColumns' => $this->summaryColumns,
+            'paginationOptions' => $this->pageOptions,
+            'paginationEnabled' => $this->paginationEnabled,
+            'paginationMode' => $this->paginationMode,
+            'extremePaginationLinks' => $this->extremePageLinks,
+            'persistPerPageInSession' => $this->persistPerPage,
             'locale' => function_exists('app') && app() instanceof Application && app()->bound('config') ? app()->getLocale() : 'en',
             ...parent::getProps(),
         ];
@@ -415,10 +555,29 @@ final class Table extends AbstractComponent implements TableComponent
             $totals[$attribute] = (float) (clone $query)->sum($attribute);
         }
 
+        $defaultSize = $this->defaultPageOption ?? $this->perPage;
+
+        if (! in_array($defaultSize, $this->pageOptions, true)) {
+            throw new InvalidArgumentException('Default page size must be one of the enforced pagination options.');
+        }
+
         $selectedPerPage = request()->query($prefix.'perPage');
-        $perPage = is_string($selectedPerPage) && in_array($selectedPerPage, ['5', '10', '25', '50', '100'], true)
-            ? (int) $selectedPerPage
-            : $this->perPage;
+        $candidate = is_string($selectedPerPage) && ctype_digit($selectedPerPage)
+            ? (int) $selectedPerPage : null;
+        $sessionKey = 'lavertia.table.'.hash('sha256', request()->path().':'.$this->name).'.perPage';
+
+        if ($candidate === null && $this->persistPerPage && request()->hasSession()) {
+            $candidate = request()->session()->get($sessionKey);
+        }
+
+        $perPage = is_int($candidate) && in_array($candidate, $this->pageOptions, true)
+            ? $candidate : $defaultSize;
+
+        if ($this->persistPerPage && request()->hasSession()) {
+            request()->session()->put($sessionKey, $perPage);
+        }
+
+        $base['defaultPaginationPageOption'] = $defaultSize;
 
         $pageParam = $prefix.'page';
         $page = filter_var(request()->query($pageParam, 1), FILTER_VALIDATE_INT, [
@@ -426,9 +585,47 @@ final class Table extends AbstractComponent implements TableComponent
         ]);
         $page = $page === false ? 1 : $page;
 
-        $paginator = $query->paginate($perPage, ['*'], $pageParam, $page)->withQueryString();
+        if (! $this->paginationEnabled) {
+            // Unpaginated views are deliberately bounded to 100 records to prevent
+            // accidental million-row Inertia payloads.
+            $models = (clone $query)->limit(101)->get();
+            $hasMore = $models->count() > 100;
+            $models = $models->take(100);
+            $pagination = [
+                'page' => 1,
+                'lastPage' => 1,
+                'perPage' => $models->count(),
+                'total' => $models->count(),
+                'hasMorePages' => false,
+                'truncated' => $hasMore,
+            ];
+        } elseif ($this->paginationMode === 'simple') {
+            $paginator = $query->simplePaginate($perPage, ['*'], $pageParam, $page)->withQueryString();
+            $models = $paginator->getCollection();
+            $pagination = [
+                'page' => $paginator->currentPage(),
+                'lastPage' => null,
+                'perPage' => $paginator->perPage(),
+                'total' => null,
+                'hasMorePages' => $paginator->hasMorePages(),
+                'nextUrl' => $paginator->nextPageUrl(),
+                'previousUrl' => $paginator->previousPageUrl(),
+            ];
+        } else {
+            $paginator = $query->paginate($perPage, ['*'], $pageParam, $page)->withQueryString();
+            $models = $paginator->getCollection();
+            $pagination = [
+                'page' => $paginator->currentPage(),
+                'lastPage' => $paginator->lastPage(),
+                'perPage' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'hasMorePages' => $paginator->hasMorePages(),
+                'nextUrl' => $paginator->nextPageUrl(),
+                'previousUrl' => $paginator->previousPageUrl(),
+            ];
+        }
 
-        $rows = $paginator->getCollection()->map(function (Model $model) use ($columns): array {
+        $rows = $models->map(function (Model $model) use ($columns): array {
             $result = [];
 
             foreach ($columns as $name) {
@@ -461,14 +658,7 @@ final class Table extends AbstractComponent implements TableComponent
             'tabCounts' => $tabCounts,
             'summaryTotals' => $totals,
             'groupOptions' => array_intersect_key(parent::getProps()['groupOptions'] ?? [], array_fill_keys($columns, true)),
-            'pagination' => [
-                'page' => $paginator->currentPage(),
-                'lastPage' => $paginator->lastPage(),
-                'perPage' => $paginator->perPage(),
-                'total' => $paginator->total(),
-                'nextUrl' => $paginator->nextPageUrl(),
-                'previousUrl' => $paginator->previousPageUrl(),
-            ],
+            'pagination' => $pagination,
         ];
     }
 }
