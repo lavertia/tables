@@ -215,6 +215,27 @@ final class Table extends AbstractComponent implements TableComponent
         return $this->withProp('columnManager', $enabled);
     }
 
+    /** Control client-side record selection without changing query authorization. */
+    public function selectable(bool $enabled = true): static
+    {
+        return $this->withProp('selectable', $enabled);
+    }
+
+    /** Control the read-only row action menu in the shared table renderer. */
+    public function recordActions(bool $enabled = true): static
+    {
+        return $this->withProp('recordActions', $enabled);
+    }
+
+    /**
+     * Hide pagination UI for a focused preview; SQL pagination and the
+     * per-page safety limit remain enforced server-side.
+     */
+    public function paginationControls(bool $enabled = true): static
+    {
+        return $this->withProp('paginationControls', $enabled);
+    }
+
     /**
      * Group headers are applied to the displayed page (not the entire result set).
      *
