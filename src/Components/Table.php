@@ -450,6 +450,7 @@ final class Table extends AbstractComponent implements TableComponent
             'tabs' => $this->tabs,
             'summaryColumns' => $this->summaryColumns,
             'paginationOptions' => $pageOptions,
+            'defaultPaginationPageOption' => $this->defaultPageOption ?? $this->perPage,
             'paginationEnabled' => $this->paginationEnabled,
             'paginationMode' => $this->paginationMode,
             'extremePaginationLinks' => $this->extremePageLinks,
@@ -600,7 +601,6 @@ final class Table extends AbstractComponent implements TableComponent
             request()->session()->put($sessionKey, $perPage);
         }
 
-        $base['defaultPaginationPageOption'] = $defaultSize;
 
         $pageParam = $prefix.'page';
         $page = filter_var(request()->query($pageParam, 1), FILTER_VALIDATE_INT, [
