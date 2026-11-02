@@ -54,6 +54,27 @@ final class SelectFilter extends AbstractComponent
         return $this->withProp('options', $options);
     }
 
+    /**
+     * Interpret 'yes' / 'no' options as NULL presence without exposing SQL.
+     */
+    public function presence(bool $enabled = true): static
+    {
+        return $this->withProp('presence', $enabled);
+    }
+
+    /**
+     * Explicit server-side database attribute for joined Eloquent queries.
+     * The client never supplies this identifier.
+     */
+    public function source(string $attribute): static
+    {
+        if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)?$/D', $attribute) !== 1) {
+            throw new InvalidArgumentException('Invalid filter source column.');
+        }
+
+        return $this->withProp('source', $attribute);
+    }
+
     /** @return array<string, mixed> */
     public function getProps(): array
     {
