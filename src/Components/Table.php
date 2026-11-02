@@ -147,7 +147,8 @@ final class Table extends AbstractComponent implements TableComponent
         }
 
         foreach ($options as $value => $label) {
-            if (! is_string($value) || preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/D', $value) !== 1)
+            if (! is_string($value)
+                || preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/D', $value) !== 1
                 || ! is_string($label) || mb_strlen($label) > 80) {
                 throw new InvalidArgumentException('Invalid table option.');
             }
