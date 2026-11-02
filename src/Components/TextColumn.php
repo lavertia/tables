@@ -69,6 +69,16 @@ final class TextColumn extends AbstractComponent implements TableColumnComponent
         return $this->withProp('badge', true)->withProp('badgeTones', $tones);
     }
 
+    /** Currency display only; the database controls numeric storage. */
+    public function money(string $currency = 'USD'): static
+    {
+        if (preg_match('/^[A-Z]{3}$/D', $currency) !== 1) {
+            throw new InvalidArgumentException('Invalid ISO 4217 currency code.');
+        }
+
+        return $this->withProp('currency', $currency);
+    }
+
     /** @return array<string, mixed> */
     public function getProps(): array
     {
