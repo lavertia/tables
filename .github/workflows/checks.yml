@@ -48,6 +48,11 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
           composer test
           composer lint
+      - name: Show formatter diff on lint failure
+        if: failure() && matrix.php == '8.4'
+        run: |
+          php vendor/bin/pint --dirty || true
+          git --no-pager diff -- src/Components/Table.php
 
   release-gate:
     name: PHP integration verification
